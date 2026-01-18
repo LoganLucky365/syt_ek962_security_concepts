@@ -1,0 +1,6 @@
+[package]
+name = "syt_ek962_security_concepts"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
