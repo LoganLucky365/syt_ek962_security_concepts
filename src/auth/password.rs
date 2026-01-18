@@ -1,3 +1,4 @@
+// Warum Argon2 -> Roschger kennt sich aus und gut erprobt
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher as _, PasswordVerifier, SaltString},
     Argon2, Algorithm, Params, Version,
