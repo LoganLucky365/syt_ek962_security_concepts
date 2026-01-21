@@ -1,10 +1,3 @@
-mod auth;
-mod config;
-mod error;
-mod handlers;
-mod models;
-mod repository;
-
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -13,11 +6,11 @@ use actix_web::{web, App, HttpServer, middleware::Logger};
 use sqlx::sqlite::SqlitePoolOptions;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use crate::auth::{JwtService, LocalAuthProvider, GoogleAuthProvider, LdapAuthProvider};
-use crate::config::{Config, InitialAdminConfig};
-use crate::handlers::{configure_routes, AppState};
-use crate::models::UserRole;
-use crate::repository::{SqliteUserRepository, UserRepository};
+use syt_ek962_security_concepts::auth::{JwtService, LocalAuthProvider, GoogleAuthProvider, LdapAuthProvider};
+use syt_ek962_security_concepts::config::{Config, InitialAdminConfig};
+use syt_ek962_security_concepts::handlers::{configure_routes, AppState};
+use syt_ek962_security_concepts::models::UserRole;
+use syt_ek962_security_concepts::repository::{SqliteUserRepository, UserRepository};
 
 async fn initialize_admin(
     config_path: &str,
@@ -50,7 +43,7 @@ async fn initialize_admin(
     if let Some(password_hash) = &admin_config.password_hash {
         tracing::info!("pre hashed pw");
 
-        let user = crate::models::User::new_local(
+        let user = syt_ek962_security_concepts::models::User::new_local(
             admin_config.name.clone(),
             admin_config.email.to_lowercase(),
             password_hash.clone(),
@@ -128,7 +121,7 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("db schema problem");
 
-    let repository: Arc<dyn crate::repository::UserRepository> = Arc::new(repository);
+    let repository: Arc<dyn syt_ek962_security_concepts::repository::UserRepository> = Arc::new(repository);
 
     let sqlite_repo = {
         let pool = SqlitePoolOptions::new()
