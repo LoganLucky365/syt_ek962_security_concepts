@@ -8,6 +8,14 @@ pub struct Config {
     pub database_url: String,
     pub jwt: JwtConfig,
     pub initial_admin_config: String,
+    pub google_oauth: Option<GoogleOAuthConfig>,
+}
+
+#[derive(Debug, Clone)]
+pub struct GoogleOAuthConfig {
+    pub client_id: String,
+    pub client_secret: String,
+    pub redirect_uri: String,
 }
 
 #[derive(Debug, Clone)]
@@ -74,7 +82,21 @@ impl Config {
             },
             initial_admin_config: env::var("INITIAL_ADMIN_CONFIG")
                 .unwrap_or_else(|_| "initial_admin.json".to_string()),
+            google_oauth: Self::google_oauth_from_env(),
         }
+    }
+
+    fn google_oauth_from_env() -> Option<GoogleOAuthConfig> {
+        let client_id = env::var("GOOGLE_CLIENT_ID").ok()?;
+        let client_secret = env::var("GOOGLE_CLIENT_SECRET").ok()?;
+        let redirect_uri = env::var("GOOGLE_REDIRECT_URI")
+            .unwrap_or_else(|_| "http://localhost:8080/auth/google/callback".to_string());
+
+        Some(GoogleOAuthConfig {
+            client_id,
+            client_secret,
+            redirect_uri,
+        })
     }
 }
 

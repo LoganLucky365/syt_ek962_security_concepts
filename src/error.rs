@@ -10,6 +10,7 @@ pub enum AppError {
     Conflict(String),
     InternalError(String),
     DatabaseError(String),
+    OAuthError(String),
 }
 
 impl fmt::Display for AppError {
@@ -22,6 +23,7 @@ impl fmt::Display for AppError {
             AppError::Conflict(msg) => write!(f, "Conflict: {}", msg),
             AppError::InternalError(msg) => write!(f, "Internal error: {}", msg),
             AppError::DatabaseError(msg) => write!(f, "Database error: {}", msg),
+            AppError::OAuthError(msg) => write!(f, "OAuth error: {}", msg),
         }
     }
 }
@@ -32,23 +34,27 @@ impl ResponseError for AppError {
     fn error_response(&self) -> HttpResponse {
         let (status, message) = match self {
             AppError::Unauthorized(_) => {
-                (StatusCode::UNAUTHORIZED, "Authentication required")
+                (StatusCode::UNAUTHORIZED, "Du musst dich scho einlogen burschi")
             }
             AppError::Forbidden(_) => {
-                (StatusCode::FORBIDDEN, "Access denied")
+                (StatusCode::FORBIDDEN, "Access denied -> hehe")
             }
             AppError::NotFound(_) => {
-                (StatusCode::NOT_FOUND, "Resource not found")
+                (StatusCode::NOT_FOUND, "Ressource not there")
             }
             AppError::ValidationError(msg) => {
                 (StatusCode::BAD_REQUEST, msg.as_str())
             }
             AppError::Conflict(_) => {
-                (StatusCode::CONFLICT, "Resource already exists")
+                (StatusCode::CONFLICT, "Resource already there")
             }
             AppError::InternalError(_) | AppError::DatabaseError(_) => {
                 tracing::error!("Internal error: {}", self);
-                (StatusCode::INTERNAL_SERVER_ERROR, "An internal error occurred")
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal malfunction -> its always your fault")
+            }
+            AppError::OAuthError(msg) => {
+                tracing::error!("OAuth error: {}", self);
+                (StatusCode::BAD_REQUEST, msg.as_str())
             }
         };
 

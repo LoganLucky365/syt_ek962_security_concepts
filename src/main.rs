@@ -13,7 +13,7 @@ use actix_web::{web, App, HttpServer, middleware::Logger};
 use sqlx::sqlite::SqlitePoolOptions;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use crate::auth::{JwtService, LocalAuthProvider};
+use crate::auth::{JwtService, LocalAuthProvider, GoogleAuthProvider};
 use crate::config::{Config, InitialAdminConfig};
 use crate::handlers::{configure_routes, AppState};
 use crate::models::UserRole;
@@ -42,7 +42,7 @@ async fn initialize_admin(
             return Ok(());
         }
 
-        tracing::info!("Loading admin form json {}", config_path);
+        tracing::info!("Loading json {}", config_path);
         let config_content = fs::read_to_string(path)?;
         serde_json::from_str(&config_content)?
     };
@@ -76,7 +76,7 @@ async fn initialize_admin(
             "pw is plain text"
         );
     } else {
-        return Err("no password or password_hash".into());
+        return Err("no pw or hash".into());
     }
 
     tracing::info!(
@@ -108,7 +108,7 @@ async fn main() -> std::io::Result<()> {
 
     if config.jwt.secret.len() < 32 {
         tracing::error!(
-            "jwt secret to short (32)"
+            "jwt to short (32)"
         );
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
@@ -120,7 +120,7 @@ async fn main() -> std::io::Result<()> {
         .max_connections(5)
         .connect(&config.database_url)
         .await
-        .expect("Failed to connect do db");
+        .expect("Failed db con");
 
     let repository = SqliteUserRepository::new(pool);
     repository
@@ -135,7 +135,7 @@ async fn main() -> std::io::Result<()> {
             .max_connections(1)
             .connect(&config.database_url)
             .await
-            .expect("Failed to create database pool for admin init");
+            .expect("admin init db pool wrong");
         SqliteUserRepository::new(pool)
     };
 
@@ -148,14 +148,24 @@ async fn main() -> std::io::Result<()> {
     )
     .await
     {
-        tracing::error!("Cant initialize admin {}", e);
+        tracing::error!("problem initialize admin {}", e);
     }
 
     let jwt_service = JwtService::new(config.jwt.clone());
 
+    let google_provider = config.google_oauth.as_ref().map(|oauth_config| {
+        tracing::info!("Google OAuth enabled");
+        GoogleAuthProvider::new(oauth_config, Arc::clone(&repository))
+    });
+
+    if google_provider.is_none() {
+        tracing::info!("Google OAuth config not found");
+    }
+
     let app_state = web::Data::new(AppState {
         jwt_service,
         auth_provider,
+        google_provider,
         repository,
     });
 
