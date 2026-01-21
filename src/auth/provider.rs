@@ -107,12 +107,6 @@ impl AuthProvider for LocalAuthProvider {
     }
 }
 
-// Placeholder Google
+// authentication google implemented in other file
 #[allow(dead_code)]
-mod google_stub {
-}
-
-// Placeholder ad
-#[allow(dead_code)]
-mod ad_stub {
-}
+mod ad_stub {}
