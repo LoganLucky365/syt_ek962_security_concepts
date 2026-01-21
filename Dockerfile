@@ -44,4 +44,18 @@ USER appuser
 
 EXPOSE 8080
 
+ENV HOST=0.0.0.0
+ENV PORT=8080
+ENV DATABASE_URL=sqlite:/app/data/auth.db?mode=rwc
+ENV JWT_SECRET=""
+ENV JWT_EXPIRATION_SECS=3600
+ENV JWT_ISSUER=auth-service
+ENV INITIAL_ADMIN_CONFIG=/app/initial_admin.json
+ENV RUST_LOG=info,sqlx=warn
+
+# Google OAuth (optional)
+ENV GOOGLE_CLIENT_ID=""
+ENV GOOGLE_CLIENT_SECRET=""
+ENV GOOGLE_REDIRECT_URI=""
+
 CMD ["/app/auth-service"]
