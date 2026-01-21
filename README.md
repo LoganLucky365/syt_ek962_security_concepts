@@ -171,6 +171,128 @@ expires one hour
 
 ### User per AD
 
+Um die user über das AD einbeziehen zu können greife ich auf ldap zurück.
+
+#### Architektur
+
+ldap wird über user binding angesprochen. Daher
+- keine service ac auf ad
+- kein admin zugang auf ad
+- authentifizierung direkt mit seinen userdaten
+- muss logischerweise im sleben netz wie controller sein
+
+AI grafik act kinda cool
+
+```
+┌─────────────┐       ┌─────────────────┐       ┌────────────────────┐
+│   Client    │──────>│   Auth Service  │──────>│  Active Directory  │
+│             │       │                 │       │  (dc-01.tgm.ac.at) │
+│  username   │       │  1. LDAP Bind   │       │                    │
+│  password   │       │  2. User Search │       │  Port 389 (LDAP)   │
+│             │       │  3. Get Attrs   │       │  Port 636 (LDAPS)  │
+└─────────────┘       └─────────────────┘       └────────────────────┘
+```
+
+#### Konfig
+
+Umgebungsvar
+
+| Variable | Beschreibung   | Beispiel | Erforderlich |
+|----------|----------------|----------|--------------|
+| `LDAP_URL` | Serverurl      | `ldap://dc-01.tgm.ac.at:389` | Ja |
+| `LDAP_USER_BASE_DN` | Domain Name    | `OU=Users,DC=tgm,DC=ac,DC=at` | Ja |
+| `LDAP_DOMAIN` | Domain Name UPN | `tgm.ac.at` | Ja |
+| `LDAP_USE_UPN` | UPN Format     | `true` | Nein (default: true) |
+| `LDAP_USE_STARTTLS` | STARTTLS       | `false` | Nein (default: false) |
+| `LDAP_USERNAME_ATTRIBUTE` | Attribut Username | `sAMAccountName` | Nein (default: sAMAccountName) |
+| `LDAP_TIMEOUT_SECS` | Timeout        | `10` | Nein (default: 10) |
+| `LDAP_ADMIN_GROUP` | Gruppe admin   | `Domain Admins` | Nein |
+
+#### Beispielflow von ai find ich ganz cool
+
+```
+Client sendet: username + password
+     │
+     ▼
+Service baut Bind-DN:
+  - UPN Format: username@tgm.ac.at
+  - oder DN Format: CN=username,OU=Users,DC=tgm,DC=ac,DC=at
+     │
+     ▼
+LDAP simple_bind() mit User-Credentials
+     │
+     ├── Erfolg: Credentials sind gültig
+     │
+     └── Fehler: Ungültige Credentials (401 Unauthorized)
+```
+
+#### Bind fragt attr an
+
+| AD Attribut | Verwendung          |
+|-------------|---------------------|
+| `cn` | common name         |
+| `displayName` | name                |
+| `mail` | email               |
+| `sAMAccountName` | windowUsername      |
+| `userPrincipalName` | UPN user@domain.com |
+| `memberOf` | group               |
+
+#### locales syncen
+1. User scho in db
+2. benutzer anlegen
+3. ad groupes adminrechte vergeben
+4. JWT token generieren
+
+#### API
+
+**/auth/ldap/signin**
+
+authentifizieren gegen ad
+
+**Request:**
+```json
+{
+    "username": "mustermann",
+    "password": "geheim123"
+}
+```
+
+**Response (Erfolg):**
+```json
+{
+    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "token_type": "Bearer",
+    "expires_in": 3600,
+    "user": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "Max Mustermann",
+        "email": "mustermann@tgm.ac.at",
+        "role": "user",
+        "created_at": "2025-01-21T10:30:00Z"
+    }
+}
+```
+
+**Response (Fehler):**
+```json
+{
+    "error": "Invalid credentials"
+}
+```
+#### ldapsearch
+
+```bash
+ldapsearch -x -H ldap://dc-01.tgm.ac.at:389 -b "DC=tgm,DC=ac,DC=at"
+
+telnet dc-01.tgm.ac.at 389
+```
+
+#### Crate
+
+```toml
+ldap3 = { version = "0.11", default-features = false, features = ["tls-rustls"] }
+```
+
 ### Tests
 
 ```bash
