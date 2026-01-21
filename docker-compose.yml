@@ -1,0 +1,25 @@
+services:
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auth-service
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # Override specific values for Docker environment
+      HOST: "0.0.0.0"
+      DATABASE_URL: "sqlite:/app/data/auth.db?mode=rwc"
+      INITIAL_ADMIN_CONFIG: "/app/initial_admin.json"
+      # Google data loaded from env
+
+    volumes:
+      - auth-data:/app/data
+
+    restart: unless-stopped
+
+volumes:
+  auth-data:
+    driver: local
