@@ -547,26 +547,8 @@
             localStorage.setItem('auth_user', JSON.stringify(user));
         }
 
-        // Handle Google OAuth callback
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('code')) {
-            // OAuth callback - the backend handles this
-            // We need to fetch the callback endpoint
-            fetch(`${API_BASE}/auth/google/callback${window.location.search}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.token) {
-                        saveAuth(data.token, data.user);
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                        showUser();
-                    } else {
-                        showMessage(data.error || 'Google Login fehlgeschlagen');
-                    }
-                })
-                .catch(() => {
-                    showMessage('Google Login fehlgeschlagen');
-                });
-        }
+        // Google OAuth callback is handled server-side now
+        // The server returns HTML that stores the token and redirects here
     </script>
 </body>
 </html>
