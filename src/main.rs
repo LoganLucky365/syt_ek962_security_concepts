@@ -3,6 +3,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use actix_web::{web, App, HttpServer, middleware::Logger};
+use actix_files::Files;
 use sqlx::sqlite::SqlitePoolOptions;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -185,11 +186,13 @@ async fn main() -> std::io::Result<()> {
             .app_data(app_state.clone())
             .wrap(Logger::default())
             .configure(configure_routes)
-            // Debug endpoint
+            // Health endpoint
             .route(
                 "/health",
                 web::get().to(|| async { actix_web::HttpResponse::Ok().json(serde_json::json!({"status": "healthy"})) }),
             )
+            // Static files (Frontend)
+            .service(Files::new("/", "./static").index_file("index.html"))
     })
     .bind((host, port))?
     .run()
