@@ -13,7 +13,7 @@ use actix_web::{web, App, HttpServer, middleware::Logger};
 use sqlx::sqlite::SqlitePoolOptions;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use crate::auth::{JwtService, LocalAuthProvider, GoogleAuthProvider};
+use crate::auth::{JwtService, LocalAuthProvider, GoogleAuthProvider, LdapAuthProvider};
 use crate::config::{Config, InitialAdminConfig};
 use crate::handlers::{configure_routes, AppState};
 use crate::models::UserRole;
@@ -162,10 +162,24 @@ async fn main() -> std::io::Result<()> {
         tracing::info!("Google OAuth config not found");
     }
 
+    let ldap_provider = config.ldap.as_ref().map(|ldap_config| {
+        tracing::info!(
+            url = %ldap_config.url,
+            domain = %ldap_config.domain,
+            "ldap activated"
+        );
+        LdapAuthProvider::new(ldap_config.clone(), Arc::clone(&repository))
+    });
+
+    if ldap_provider.is_none() {
+        tracing::info!("ldap conf not found");
+    }
+
     let app_state = web::Data::new(AppState {
         jwt_service,
         auth_provider,
         google_provider,
+        ldap_provider,
         repository,
     });
 

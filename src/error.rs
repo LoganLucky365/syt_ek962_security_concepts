@@ -11,6 +11,7 @@ pub enum AppError {
     InternalError(String),
     DatabaseError(String),
     OAuthError(String),
+    LdapError(String),
 }
 
 impl fmt::Display for AppError {
@@ -24,6 +25,7 @@ impl fmt::Display for AppError {
             AppError::InternalError(msg) => write!(f, "Internal error: {}", msg),
             AppError::DatabaseError(msg) => write!(f, "Database error: {}", msg),
             AppError::OAuthError(msg) => write!(f, "OAuth error: {}", msg),
+            AppError::LdapError(msg) => write!(f, "LDAP error: {}", msg),
         }
     }
 }
@@ -55,6 +57,10 @@ impl ResponseError for AppError {
             AppError::OAuthError(msg) => {
                 tracing::error!("OAuth error: {}", self);
                 (StatusCode::BAD_REQUEST, msg.as_str())
+            }
+            AppError::LdapError(msg) => {
+                tracing::error!("ldap error: {}", self);
+                (StatusCode::SERVICE_UNAVAILABLE, msg.as_str())
             }
         };
 

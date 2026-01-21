@@ -9,6 +9,7 @@ pub struct Config {
     pub jwt: JwtConfig,
     pub initial_admin_config: String,
     pub google_oauth: Option<GoogleOAuthConfig>,
+    pub ldap: Option<LdapConfig>,
 }
 
 #[derive(Debug, Clone)]
@@ -16,6 +17,22 @@ pub struct GoogleOAuthConfig {
     pub client_id: String,
     pub client_secret: String,
     pub redirect_uri: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct LdapConfig {
+    // ldap url zb ldap://dc-01.tgm.ac.at:389 or ldaps://dc-01.tgm.ac.at:636
+    pub url: String,
+    pub user_base_dn: String,
+    // domain name
+    pub domain: String,
+    // use user@domain instead of dn
+    pub use_upn: bool,
+    pub use_starttls: bool,
+    pub username_attribute: String,
+    pub timeout_secs: u64,
+    // ad groupe name for admin role
+    pub admin_group: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -83,6 +100,7 @@ impl Config {
             initial_admin_config: env::var("INITIAL_ADMIN_CONFIG")
                 .unwrap_or_else(|_| "initial_admin.json".to_string()),
             google_oauth: Self::google_oauth_from_env(),
+            ldap: Self::ldap_from_env(),
         }
     }
 
@@ -96,6 +114,41 @@ impl Config {
             client_id,
             client_secret,
             redirect_uri,
+        })
+    }
+
+    fn ldap_from_env() -> Option<LdapConfig> {
+        let url = env::var("LDAP_URL").ok()?;
+        let user_base_dn = env::var("LDAP_USER_BASE_DN").ok()?;
+        let domain = env::var("LDAP_DOMAIN").ok()?;
+
+        let use_upn = env::var("LDAP_USE_UPN")
+            .map(|v| v.to_lowercase() == "true" || v == "1")
+            .unwrap_or(true); // Default to UPN for AD
+
+        let use_starttls = env::var("LDAP_USE_STARTTLS")
+            .map(|v| v.to_lowercase() == "true" || v == "1")
+            .unwrap_or(false);
+
+        let username_attribute = env::var("LDAP_USERNAME_ATTRIBUTE")
+            .unwrap_or_else(|_| "sAMAccountName".to_string());
+
+        let timeout_secs = env::var("LDAP_TIMEOUT_SECS")
+            .unwrap_or_else(|_| "10".to_string())
+            .parse()
+            .unwrap_or(10);
+
+        let admin_group = env::var("LDAP_ADMIN_GROUP").ok();
+
+        Some(LdapConfig {
+            url,
+            user_base_dn,
+            domain,
+            use_upn,
+            use_starttls,
+            username_attribute,
+            timeout_secs,
+            admin_group,
         })
     }
 }
