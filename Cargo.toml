@@ -34,3 +34,12 @@ url = "2"
 
 # LDAP / Active Directory
 ldap3 = { version = "0.11", default-features = false, features = ["tls-rustls"] }
+
+[dev-dependencies]
+actix-rt = "2"
+tokio-test = "0.4"
+mockall = "0.13"
+tempfile = "3"
+wiremock = "0.6"
+claim = "0.5"
+fake = { version = "3", features = ["derive"] }
