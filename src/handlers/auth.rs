@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use validator::Validate;
 
-use crate::auth::{JwtService, LocalAuthProvider, GoogleAuthProvider, Claims, AuthProvider};
+use crate::auth::{JwtService, LocalAuthProvider, GoogleAuthProvider, LdapAuthProvider, Claims, AuthProvider};
 use crate::error::AppError;
 use crate::models::{CreateUser, UserResponse, UserRole};
 use crate::repository::UserRepository;
@@ -12,6 +12,7 @@ pub struct AppState {
     pub jwt_service: JwtService,
     pub auth_provider: LocalAuthProvider,
     pub google_provider: Option<GoogleAuthProvider>,
+    pub ldap_provider: Option<LdapAuthProvider>,
     pub repository: Arc<dyn UserRepository>,
 }
 
@@ -39,6 +40,15 @@ pub struct RegisterResponse {
 pub struct SignInRequest {
     #[validate(email(message = "Invalid email"))]
     pub email: String,
+
+    #[validate(length(min = 1, message = "Password required"))]
+    pub password: String,
+}
+
+#[derive(Debug, Deserialize, Validate)]
+pub struct LdapSignInRequest {
+    #[validate(length(min = 1, message = "Username required"))]
+    pub username: String,
 
     #[validate(length(min = 1, message = "Password required"))]
     pub password: String,
@@ -133,16 +143,40 @@ pub async fn register_user(
     }))
 }
 
-pub async fn signin(
-    state: web::Data<AppState>,
-    body: web::Json<SignInRequest>,
-) -> Result<HttpResponse, AppError> {
+pub async fn signin(state: web::Data<AppState>, body: web::Json<SignInRequest>) -> Result<HttpResponse, AppError> {
     body.validate()
         .map_err(|e| AppError::ValidationError(e.to_string()))?;
 
     let result = state
         .auth_provider
         .authenticate(&body.email, &body.password)
+        .await?;
+
+    let token = state.jwt_service.generate_token(
+        &result.user.id,
+        &result.user.email,
+        result.user.role,
+    )?;
+
+    Ok(HttpResponse::Ok().json(SignInResponse {
+        token,
+        token_type: "Bearer".to_string(),
+        expires_in: 3600,
+        user: result.user.into(),
+    }))
+}
+
+pub async fn ldap_signin(state: web::Data<AppState>, body: web::Json<LdapSignInRequest>) -> Result<HttpResponse, AppError> {
+    body.validate()
+        .map_err(|e| AppError::ValidationError(e.to_string()))?;
+
+    let ldap_provider = state.ldap_provider.as_ref().ok_or_else(|| {
+        tracing::warn!("ldap not proper configured");
+        AppError::ValidationError("ldap not activated".to_string())
+    })?;
+
+    let result = ldap_provider
+        .authenticate(&body.username, &body.password)
         .await?;
 
     let token = state.jwt_service.generate_token(
@@ -203,6 +237,7 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
         web::scope("/auth")
             .route("/admin/register", web::post().to(register_user))
             .route("/signin", web::post().to(signin))
+            .route("/ldap/signin", web::post().to(ldap_signin))
             .route("/verify", web::post().to(verify_token))
             .route("/google/login", web::get().to(super::oauth::google_login))
             .route("/google/callback", web::get().to(super::oauth::google_callback)),
