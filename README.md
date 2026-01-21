@@ -1,3 +1,8 @@
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-no-red.svg)](https://GitHub.com/Naereen/StrapDown.js/graphs/commit-activity)
+[![made-with-rust](https://img.shields.io/badge/Made%20with-Rust-1f425f.svg)](https://www.rust-lang.org/)
+[![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/Naereen/StrapDown.js/blob/master/LICENSE)
+![Promille](https://img.shields.io/badge/Promille-0.67‰-yellow)
+
 # SYT EK 962 Security Concepts
 
 ## Aufgabenstellung
@@ -309,6 +314,12 @@ Test Reports
 
 ## Quellen
 
-https://crates.io/crates/oauth2
+[1] “Doc OAuth Crate” Accessed: Jan. 21, 2026. [Online]. Available: https://crates.io/crates/oauth2
 
-https://console.cloud.google.com/apis/credentials
+[2] “Herocu docs” Accessed: Jan. 09, 2026. [Online]. Available: https://devcenter.heroku.com/
+
+[3] “google cloud access” Accessed: Jan. 21, 2026. [Online]. Available: https://console.cloud.google.com/apis/credentials
+
+[4] “Diesel CSV documentation” Accessed: Jan. 19, 2026. [Online]. Available: https://diesel.readthedocs.io/en/latest/csv.html
+
+[5] "badges doc" Accessed: Jan. 20, 2026. [Online]. Available: https://naereen.github.io/badges/
