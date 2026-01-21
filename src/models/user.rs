@@ -88,6 +88,28 @@ impl User {
     pub fn is_admin(&self) -> bool {
         self.role == UserRole::Admin
     }
+
+    pub fn new_external(
+        name: String,
+        email: String,
+        provider: AuthProviderType,
+        external_id: String,
+        role: UserRole,
+    ) -> Self {
+        let now = Utc::now();
+        Self {
+            id: Uuid::new_v4().to_string(),
+            name,
+            email,
+            password_hash: None,
+            role,
+            auth_provider: provider,
+            external_id: Some(external_id),
+            created_at: now,
+            updated_at: now,
+            is_active: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Validate)]

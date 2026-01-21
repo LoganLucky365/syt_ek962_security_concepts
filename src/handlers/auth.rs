@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use validator::Validate;
 
-use crate::auth::{JwtService, LocalAuthProvider, Claims, AuthProvider};
+use crate::auth::{JwtService, LocalAuthProvider, GoogleAuthProvider, Claims, AuthProvider};
 use crate::error::AppError;
 use crate::models::{CreateUser, UserResponse, UserRole};
 use crate::repository::UserRepository;
@@ -11,6 +11,7 @@ use crate::repository::UserRepository;
 pub struct AppState {
     pub jwt_service: JwtService,
     pub auth_provider: LocalAuthProvider,
+    pub google_provider: Option<GoogleAuthProvider>,
     pub repository: Arc<dyn UserRepository>,
 }
 
@@ -202,6 +203,8 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
         web::scope("/auth")
             .route("/admin/register", web::post().to(register_user))
             .route("/signin", web::post().to(signin))
-            .route("/verify", web::post().to(verify_token)),
+            .route("/verify", web::post().to(verify_token))
+            .route("/google/login", web::get().to(super::oauth::google_login))
+            .route("/google/callback", web::get().to(super::oauth::google_callback)),
     );
 }
