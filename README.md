@@ -5,6 +5,7 @@
 
 # SYT EK 962 Security Concepts
 
+
 ## Aufgabenstellung
 
 **Recherche**
@@ -14,6 +15,9 @@ Anbindung an ein bestehende Authentifikations-Services
 Token-Authentifizierung, um ein andauerndes Login bei mehreren Services gering zu halten bzw. auf ein einmaliges Authentifizieren zu beschränken
 Verwendung auf verschiedenen Implementierungen und Devices
 Diese Gegenüberstellung soll kurz und bündig auf die gängigen Systeme und Technologien verweisen. Es sollen keine Informationen kopiert sondern nur kurz zusammengefasst werden.
+
+
+[Recherche](Recherche.md)
 
 **Implementierung**
 Um das in Entwicklung befindliche Online-Portal zur Bereitstellung von Informationen des Windparks entsprechend einer breiten Community schmackhaft zu machen, und trotzdem eine Authentifizierung anzubieten, werden Sie beauftragt einen Prototypen für Spring-Boot zu entwickeln, der sich über Sozialen-Netzwerken authentifizieren kann (Facebook, Google+, etc.).
