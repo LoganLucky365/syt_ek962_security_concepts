@@ -37,6 +37,7 @@ COPY --from=builder /app/target/release/syt_ek962_security_concepts /app/auth-se
 COPY --from=builder /app/target/release/hash_password /app/hash_password
 
 COPY initial_admin.json* /app/
+COPY static /app/static/
 
 RUN mkdir -p /app/data && chown -R appuser:appuser /app
 
