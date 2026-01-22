@@ -44,11 +44,10 @@ pub async fn google_login(state: web::Data<AppState>) -> Result<HttpResponse, Ap
 
 pub async fn google_callback(state: web::Data<AppState>, query: web::Query<OAuthCallbackQuery>) -> Result<HttpResponse, AppError> {
     let google_provider = state.google_provider.as_ref().ok_or_else(|| {
-        // Deployment debuging
         AppError::OAuthError("not configured".to_string())
     })?;
 
-    tracing::info!("started callback procesing");
+    tracing::info!("started callback processing");
 
     let google_user = google_provider.exchange_code(&query.code).await?;
 
@@ -62,11 +61,24 @@ pub async fn google_callback(state: web::Data<AppState>, query: web::Query<OAuth
         auth_result.user.role,
     )?;
 
-    Ok(HttpResponse::Ok().json(OAuthCallbackResponse {
-        token,
-        token_type: "Bearer".to_string(),
-        expires_in: 3600,
-        user: auth_result.user.into(),
-        is_new_user,
-    }))
+    let user_response: UserResponse = auth_result.user.into();
+    let user_json = serde_json::to_string(&user_response).unwrap_or_default();
+
+    // Return HTML that stores token and redirects to frontend
+    let html = format!(r#"<!DOCTYPE html>
+<html>
+<head><title>Login erfolgreich</title></head>
+<body>
+<script>
+    localStorage.setItem('auth_token', '{}');
+    localStorage.setItem('auth_user', '{}');
+    window.location.href = '/';
+</script>
+<p>Login erfolgreich, Weiterleitung...</p>
+</body>
+</html>"#, token, user_json.replace('\'', "\\'").replace('\n', ""));
+
+    Ok(HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body(html))
 }

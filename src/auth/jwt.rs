@@ -96,7 +96,6 @@ impl JwtService {
     }
 }
 
-// Generated tests
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -108,6 +107,16 @@ mod tests {
             issuer: "test-issuer".to_string(),
         }
     }
+
+    fn short_expiry_config() -> JwtConfig {
+        JwtConfig {
+            secret: "test_secret_key_at_least_32_chars_long".to_string(),
+            expiration_secs: 1,
+            issuer: "test-issuer".to_string(),
+        }
+    }
+
+    // ==================== Token Generation Tests ====================
 
     #[test]
     fn test_generate_and_validate_token() {
@@ -123,14 +132,63 @@ mod tests {
     }
 
     #[test]
-    fn test_invalid_token() {
+    fn test_generate_token_for_admin() {
+        let service = JwtService::new(test_config());
+        let token = service
+            .generate_token("admin-456", "admin@example.com", UserRole::Admin)
+            .unwrap();
+
+        let claims = service.validate_token(&token).unwrap();
+        assert_eq!(claims.sub, "admin-456");
+        assert_eq!(claims.email, "admin@example.com");
+        assert_eq!(claims.role, "admin");
+    }
+
+    #[test]
+    fn test_token_contains_correct_issuer() {
+        let service = JwtService::new(test_config());
+        let token = service
+            .generate_token("user-123", "test@example.com", UserRole::User)
+            .unwrap();
+
+        let claims = service.validate_token(&token).unwrap();
+        assert_eq!(claims.iss, "test-issuer");
+    }
+
+    #[test]
+    fn test_token_contains_timestamps() {
+        let service = JwtService::new(test_config());
+        let before = Utc::now().timestamp();
+
+        let token = service
+            .generate_token("user-123", "test@example.com", UserRole::User)
+            .unwrap();
+
+        let after = Utc::now().timestamp();
+        let claims = service.validate_token(&token).unwrap();
+
+        assert!(claims.iat >= before && claims.iat <= after);
+        assert_eq!(claims.exp, claims.iat + 3600);
+    }
+
+    // ==================== Token Validation Tests ====================
+
+    #[test]
+    fn test_invalid_token_format() {
         let service = JwtService::new(test_config());
         let result = service.validate_token("invalid.token.here");
         assert!(result.is_err());
     }
 
     #[test]
-    fn test_tampered_token() {
+    fn test_empty_token() {
+        let service = JwtService::new(test_config());
+        let result = service.validate_token("");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_tampered_token_signature() {
         let service = JwtService::new(test_config());
         let token = service
             .generate_token("user-123", "test@example.com", UserRole::User)
@@ -139,5 +197,164 @@ mod tests {
         let tampered = format!("{}x", token);
         let result = service.validate_token(&tampered);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_token_with_wrong_secret() {
+        let service1 = JwtService::new(test_config());
+        let token = service1
+            .generate_token("user-123", "test@example.com", UserRole::User)
+            .unwrap();
+
+        let different_config = JwtConfig {
+            secret: "different_secret_key_at_least_32_chars".to_string(),
+            expiration_secs: 3600,
+            issuer: "test-issuer".to_string(),
+        };
+        let service2 = JwtService::new(different_config);
+
+        let result = service2.validate_token(&token);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_token_with_wrong_issuer_rejected() {
+        let service1 = JwtService::new(test_config());
+        let token = service1
+            .generate_token("user-123", "test@example.com", UserRole::User)
+            .unwrap();
+
+        let different_issuer_config = JwtConfig {
+            secret: "test_secret_key_at_least_32_chars_long".to_string(),
+            expiration_secs: 3600,
+            issuer: "different-issuer".to_string(),
+        };
+        let service2 = JwtService::new(different_issuer_config);
+
+        let result = service2.validate_token(&token);
+        assert!(result.is_err());
+    }
+
+    // ==================== Token Expiration Tests ====================
+
+    #[test]
+    fn test_expired_token_rejected() {
+        let service = JwtService::new(short_expiry_config());
+        let token = service
+            .generate_token("user-123", "test@example.com", UserRole::User)
+            .unwrap();
+
+        // Wait for token to expire
+        std::thread::sleep(std::time::Duration::from_secs(2));
+
+        let result = service.validate_token(&token);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_claims_is_expired_method() {
+        let config = test_config();
+        let claims = Claims::new("user-123", "test@example.com", UserRole::User, &config);
+        assert!(!claims.is_expired());
+    }
+
+    #[test]
+    fn test_claims_is_expired_for_past_token() {
+        let claims = Claims {
+            sub: "user-123".to_string(),
+            email: "test@example.com".to_string(),
+            role: "user".to_string(),
+            exp: Utc::now().timestamp() - 100,
+            iat: Utc::now().timestamp() - 200,
+            iss: "test".to_string(),
+        };
+        assert!(claims.is_expired());
+    }
+
+    // ==================== Claims Tests ====================
+
+    #[test]
+    fn test_claims_get_role_user() {
+        let config = test_config();
+        let claims = Claims::new("user-123", "test@example.com", UserRole::User, &config);
+        assert_eq!(claims.get_role().unwrap(), UserRole::User);
+    }
+
+    #[test]
+    fn test_claims_get_role_admin() {
+        let config = test_config();
+        let claims = Claims::new("admin-123", "admin@example.com", UserRole::Admin, &config);
+        assert_eq!(claims.get_role().unwrap(), UserRole::Admin);
+    }
+
+    #[test]
+    fn test_claims_get_role_invalid() {
+        let claims = Claims {
+            sub: "user-123".to_string(),
+            email: "test@example.com".to_string(),
+            role: "invalid_role".to_string(),
+            exp: Utc::now().timestamp() + 3600,
+            iat: Utc::now().timestamp(),
+            iss: "test".to_string(),
+        };
+        assert!(claims.get_role().is_err());
+    }
+
+    // ==================== Decode Without Validation Tests ====================
+
+    #[test]
+    fn test_decode_without_validation_expired_token() {
+        let service = JwtService::new(short_expiry_config());
+        let token = service
+            .generate_token("user-123", "test@example.com", UserRole::User)
+            .unwrap();
+
+        std::thread::sleep(std::time::Duration::from_secs(2));
+
+        // Should fail with normal validation
+        assert!(service.validate_token(&token).is_err());
+
+        // Should succeed without validation
+        let claims = service.decode_without_validation(&token).unwrap();
+        assert_eq!(claims.sub, "user-123");
+    }
+
+    // ==================== Edge Cases ====================
+
+    #[test]
+    fn test_token_with_special_characters_in_email() {
+        let service = JwtService::new(test_config());
+        let token = service
+            .generate_token("user-123", "test+special@example.com", UserRole::User)
+            .unwrap();
+
+        let claims = service.validate_token(&token).unwrap();
+        assert_eq!(claims.email, "test+special@example.com");
+    }
+
+    #[test]
+    fn test_token_with_unicode_in_user_id() {
+        let service = JwtService::new(test_config());
+        let token = service
+            .generate_token("user-äöü-123", "test@example.com", UserRole::User)
+            .unwrap();
+
+        let claims = service.validate_token(&token).unwrap();
+        assert_eq!(claims.sub, "user-äöü-123");
+    }
+
+    #[test]
+    fn test_multiple_tokens_for_same_user_are_valid() {
+        let service = JwtService::new(test_config());
+        let token1 = service
+            .generate_token("user-123", "test@example.com", UserRole::User)
+            .unwrap();
+        let token2 = service
+            .generate_token("user-123", "test@example.com", UserRole::User)
+            .unwrap();
+
+        let claims1 = service.validate_token(&token1).unwrap();
+        let claims2 = service.validate_token(&token2).unwrap();
+        assert_eq!(claims1.sub, claims2.sub);
     }
 }

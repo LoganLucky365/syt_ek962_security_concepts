@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 actix-web = "4"
 actix-rt = "2"
+actix-files = "0.6"
 tokio = { version = "1", features = ["full"] }
 
 sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "migrate", "chrono"] }
@@ -34,3 +35,12 @@ url = "2"
 
 # LDAP / Active Directory
 ldap3 = { version = "0.11", default-features = false, features = ["tls-rustls"] }
+
+[dev-dependencies]
+actix-rt = "2"
+tokio-test = "0.4"
+mockall = "0.13"
+tempfile = "3"
+wiremock = "0.6"
+claim = "0.5"
+fake = { version = "3", features = ["derive"] }
